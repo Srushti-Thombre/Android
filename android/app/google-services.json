@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "107345281388",
+    "project_id": "financeanalyzer-7b302",
+    "storage_bucket": "financeanalyzer-7b302.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:107345281388:android:6be0c96f33b41ec7ddf349",
+        "android_client_info": {
+          "package_name": "com.example.finance_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBsorfr_y4i9AMZyzPhfkaC5A2SykRLx6g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
