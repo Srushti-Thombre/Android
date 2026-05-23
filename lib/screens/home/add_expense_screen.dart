@@ -174,15 +174,33 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     }
   }
 
-  void _handleAddExpense() {
+  Future<void> _handleAddExpense() async {
     if (_formKey.currentState?.validate() ?? false) {
       final userId = context.read<AuthProvider>().currentUser?.uid;
       if (userId != null) {
         try {
           final amount = double.parse(_amountController.text);
           
-          // Add expense instantly (no async)
-          context.read<ExpenseProvider>().addExpense(
+          // Show loading
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  SizedBox(width: 12),
+                  Text('Adding expense...'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // Add expense asynchronously
+          await context.read<ExpenseProvider>().addExpense(
             userId: userId,
             category: _selectedCategory,
             amount: amount,
@@ -190,19 +208,32 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
             note: _noteController.text,
           );
 
-          // Show success message and pop
+          if (!mounted) return;
+
+          // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Expense added successfully'),
-              duration: Duration(seconds: 1),
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Expense added successfully'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.green,
             ),
           );
           
           // Pop back to dashboard
           Navigator.pop(context);
         } catch (e) {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${e.toString()}')),
+            SnackBar(
+              content: Text('Error: ${e.toString()}'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
       }

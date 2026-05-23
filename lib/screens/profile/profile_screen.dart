@@ -13,17 +13,29 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
   late TextEditingController _incomeController;
+  final _formKey = GlobalKey<FormState>();
+  bool _didInitializeIncome = false;
 
   @override
   void initState() {
     super.initState();
+    _incomeController = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (_didInitializeIncome) {
+      return;
+    }
+
     final user = context.read<UserProvider>().user;
-    _nameController = TextEditingController(text: user?.displayName ?? '');
-    _emailController = TextEditingController(text: user?.email ?? '');
-    _incomeController = TextEditingController(text: user?.monthlyIncome.toString() ?? '');
+    if (user != null) {
+      _incomeController.text = user.monthlyIncome > 0 ? user.monthlyIncome.toStringAsFixed(2) : '';
+      _didInitializeIncome = true;
+    }
   }
 
   @override
@@ -42,9 +54,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
                 // Profile Picture
                 Container(
                   width: 100,
@@ -113,29 +127,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Monthly Income
+                // Monthly Income Editor
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Monthly Income',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Colors.grey,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'Monthly Income',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey,
+                                    ),
                               ),
+                            ),
+                            Icon(Icons.edit, size: 18, color: Theme.of(context).colorScheme.primary),
+                          ],
                         ),
                         const SizedBox(height: 8),
-                        Text(
-                          '₹${user.monthlyIncome.toStringAsFixed(2)}',
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                              ),
+                        TextFormField(
+                          controller: _incomeController,
+                          validator: Validators.validateMonthlyIncome,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(
+                            prefixText: '₹ ',
+                            hintText: 'Enter monthly income',
+                          ),
                         ),
                       ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    onPressed: userProvider.isLoading ? null : () => _handleSaveIncome(context),
+                    icon: userProvider.isLoading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.save),
+                    label: const Text('Save Income'),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -163,12 +203,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
           );
         },
       ),
     );
+  }
+
+  Future<void> _handleSaveIncome(BuildContext context) async {
+    if (_formKey.currentState?.validate() ?? false) {
+      final income = double.parse(_incomeController.text.trim());
+      final success = await context.read<UserProvider>().updateUserProfile(monthlyIncome: income);
+
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? 'Income updated successfully' : 'Failed to update income'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+    }
   }
 
   void _handleLogout(BuildContext context) {
@@ -199,8 +258,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
     _incomeController.dispose();
     super.dispose();
   }

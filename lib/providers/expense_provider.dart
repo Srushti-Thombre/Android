@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../models/expense_model.dart';
+import '../services/database_helper.dart';
+import 'package:uuid/uuid.dart';
 
 class ExpenseProvider extends ChangeNotifier {
-  // In-memory storage for expenses
-  final Map<String, List<ExpenseModel>> _userExpenses = {};
+  final DatabaseHelper _dbHelper = DatabaseHelper();
 
   List<ExpenseModel> _currentUserExpenses = [];
   Map<String, double> _categoryBreakdown = {};
@@ -11,110 +12,197 @@ class ExpenseProvider extends ChangeNotifier {
   String? _error;
   DateTime _selectedMonth = DateTime.now();
   String? _currentUserId;
+  bool _isLoading = false;
 
   // Getters
   List<ExpenseModel> get expenses => List.unmodifiable(_currentUserExpenses);
-  Map<String, double> get categoryBreakdown => Map.unmodifiable(_categoryBreakdown);
+  Map<String, double> get categoryBreakdown =>
+      Map.unmodifiable(_categoryBreakdown);
   double get totalExpenses => _totalExpenses;
   String? get error => _error;
   DateTime get selectedMonth => _selectedMonth;
-  bool get isLoading => false; // Always false for in-memory operations
+  bool get isLoading => _isLoading;
 
   /// Initialize provider for a specific user
-  void initializeUser(String userId) {
+  Future<void> initializeUser(String userId) async {
     _currentUserId = userId;
-    if (!_userExpenses.containsKey(userId)) {
-      _userExpenses[userId] = [];
-    }
-    _loadUserExpenses();
+    await _loadUserExpenses();
   }
 
-  /// Load expenses for current user and month
-  void _loadUserExpenses() {
+  /// Load expenses for current user and month from SQLite
+  Future<void> _loadUserExpenses() async {
     if (_currentUserId == null) return;
 
-    _currentUserExpenses = _userExpenses[_currentUserId]!
-        .where((expense) =>
-            expense.date.year == _selectedMonth.year &&
-            expense.date.month == _selectedMonth.month)
-        .toList();
+    _setLoading(true);
+    _clearError();
 
-    // Sort by date (newest first)
-    _currentUserExpenses.sort((a, b) => b.date.compareTo(a.date));
+    try {
+      final results = await _dbHelper.getExpensesForUserAndMonth(
+        _currentUserId!,
+        _selectedMonth.year,
+        _selectedMonth.month,
+      );
 
-    _calculateTotals();
-    notifyListeners();
+      _currentUserExpenses = results
+          .map((map) => ExpenseModel.fromMap(map['id'] as String, map))
+          .toList();
+
+      // Sort by date (newest first)
+      _currentUserExpenses.sort((a, b) => b.date.compareTo(a.date));
+
+      _calculateTotals();
+      notifyListeners();
+    } catch (e) {
+      _setError(e.toString());
+      debugPrint('Error loading expenses: $e');
+    } finally {
+      _setLoading(false);
+    }
   }
 
-  /// Add a new expense (instantly)
-  void addExpense({
+  /// Add a new expense to SQLite
+  Future<void> addExpense({
     required String userId,
     required String category,
     required double amount,
     required DateTime date,
     String note = '',
-  }) {
+    String? receiptUrl,
+  }) async {
     if (userId != _currentUserId) {
       _currentUserId = userId;
-      if (!_userExpenses.containsKey(userId)) {
-        _userExpenses[userId] = [];
-      }
     }
 
-    final expense = ExpenseModel(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      userId: userId,
-      category: category,
-      amount: amount,
-      date: date,
-      note: note,
-      createdAt: DateTime.now(),
-    );
+    _clearError();
 
-    _userExpenses[userId]!.add(expense);
-    _loadUserExpenses();
+    try {
+      final expenseId = const Uuid().v4();
+
+      await _dbHelper.insertExpense(
+        id: expenseId,
+        userId: userId,
+        category: category,
+        amount: amount,
+        date: date,
+        note: note,
+        receiptUrl: receiptUrl,
+      );
+
+      // Reload expenses for current month
+      await _loadUserExpenses();
+    } catch (e) {
+      _setError(e.toString());
+      debugPrint('Error adding expense: $e');
+      rethrow;
+    }
   }
 
-  /// Update an existing expense
-  void updateExpense({
+  /// Update an existing expense in SQLite
+  Future<void> updateExpense({
     required String expenseId,
     String? category,
     double? amount,
     DateTime? date,
     String? note,
-  }) {
+    String? receiptUrl,
+  }) async {
     if (_currentUserId == null) return;
 
-    final expenses = _userExpenses[_currentUserId]!;
-    final index = expenses.indexWhere((e) => e.id == expenseId);
+    _clearError();
 
-    if (index != -1) {
-      expenses[index] = expenses[index].copyWith(
+    try {
+      await _dbHelper.updateExpense(
+        id: expenseId,
         category: category,
         amount: amount,
         date: date,
         note: note,
-        updatedAt: DateTime.now(),
+        receiptUrl: receiptUrl,
       );
-      _loadUserExpenses();
+
+      // Reload expenses
+      await _loadUserExpenses();
+    } catch (e) {
+      _setError(e.toString());
+      debugPrint('Error updating expense: $e');
+      rethrow;
     }
   }
 
-  /// Delete an expense
-  void deleteExpense(String expenseId) {
+  /// Delete an expense from SQLite
+  Future<void> deleteExpense(String expenseId) async {
     if (_currentUserId == null) return;
 
-    _userExpenses[_currentUserId]!.removeWhere((e) => e.id == expenseId);
-    _loadUserExpenses();
+    _clearError();
+
+    try {
+      await _dbHelper.deleteExpense(expenseId);
+
+      // Reload expenses
+      await _loadUserExpenses();
+    } catch (e) {
+      _setError(e.toString());
+      debugPrint('Error deleting expense: $e');
+      rethrow;
+    }
   }
 
   /// Change selected month and reload expenses
-  void setSelectedMonth(DateTime month) {
+  Future<void> setSelectedMonth(DateTime month) async {
     _selectedMonth = DateTime(month.year, month.month, 1);
-    _loadUserExpenses();
+    await _loadUserExpenses();
   }
 
-  /// Calculate totals and category breakdown synchronously
+  /// Get all expenses for a user (not filtered by month)
+  Future<List<ExpenseModel>> getAllUserExpenses(String userId) async {
+    try {
+      final results = await _dbHelper.getExpensesForUser(userId);
+      return results
+          .map((map) => ExpenseModel.fromMap(map['id'] as String, map))
+          .toList();
+    } catch (e) {
+      debugPrint('Error getting all expenses: $e');
+      return [];
+    }
+  }
+
+  /// Get category breakdown for specific date range
+  Future<Map<String, double>> getCategoryBreakdown(
+    String userId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return await _dbHelper.getCategoryBreakdownForUser(
+        userId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      debugPrint('Error getting category breakdown: $e');
+      return {};
+    }
+  }
+
+  /// Get total expenses for specific date range
+  Future<double> getTotalExpenses(
+    String userId, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
+    try {
+      return await _dbHelper.getTotalExpensesForUser(
+        userId,
+        startDate: startDate,
+        endDate: endDate,
+      );
+    } catch (e) {
+      debugPrint('Error getting total expenses: $e');
+      return 0.0;
+    }
+  }
+
+  /// Calculate totals and category breakdown for current loaded expenses
   void _calculateTotals() {
     _categoryBreakdown.clear();
     _totalExpenses = 0.0;
@@ -126,6 +214,20 @@ class ExpenseProvider extends ChangeNotifier {
     }
   }
 
+  /// Get expense by ID
+  Future<ExpenseModel?> getExpenseById(String id) async {
+    try {
+      final result = await _dbHelper.getExpenseById(id);
+      if (result != null) {
+        return ExpenseModel.fromMap(result['id'] as String, result);
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting expense by ID: $e');
+      return null;
+    }
+  }
+
   /// Clear all data (useful for logout)
   void clearData() {
     _currentUserId = null;
@@ -133,6 +235,21 @@ class ExpenseProvider extends ChangeNotifier {
     _categoryBreakdown.clear();
     _totalExpenses = 0.0;
     _error = null;
+    _isLoading = false;
     notifyListeners();
+  }
+
+  void _setLoading(bool value) {
+    _isLoading = value;
+    notifyListeners();
+  }
+
+  void _setError(String? value) {
+    _error = value;
+    notifyListeners();
+  }
+
+  void _clearError() {
+    _error = null;
   }
 }

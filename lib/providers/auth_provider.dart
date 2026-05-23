@@ -2,9 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/database_helper.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
+  final DatabaseHelper _dbHelper = DatabaseHelper();
 
   UserModel? _currentUser;
   bool _isLoading = false;
@@ -21,9 +23,35 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
     _clearError();
     try {
-      _currentUser = await _authService.getCurrentUser();
+      final firebaseUser = _authService.currentUser;
+      if (firebaseUser != null) {
+        // Load user from SQLite
+        final userData = await _dbHelper.getUserById(firebaseUser.uid);
+        if (userData != null) {
+          _currentUser = UserModel.fromMap(firebaseUser.uid, userData);
+        } else {
+          // Create user in database if not exists
+          final userModel = UserModel(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            displayName: firebaseUser.displayName ?? 'User',
+            createdAt: DateTime.now(),
+          );
+          
+          await _dbHelper.insertOrUpdateUser(
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? '',
+            displayName: firebaseUser.displayName ?? 'User',
+            photoUrl: firebaseUser.photoURL,
+            createdAt: DateTime.now(),
+          );
+          
+          _currentUser = userModel;
+        }
+      }
     } catch (e) {
       _setError(e.toString());
+      debugPrint('Error checking auth state: $e');
     } finally {
       _setLoading(false);
     }
@@ -42,10 +70,26 @@ class AuthProvider extends ChangeNotifier {
         password: password,
         displayName: displayName,
       );
+
+      // Store user in SQLite
+      if (_currentUser != null) {
+        await _dbHelper.insertOrUpdateUser(
+          uid: _currentUser!.uid,
+          email: _currentUser!.email,
+          displayName: _currentUser!.displayName,
+          photoUrl: _currentUser!.photoUrl,
+          monthlyIncome: _currentUser!.monthlyIncome,
+          currency: _currentUser!.currency,
+          budgetLimit: _currentUser!.budgetLimit,
+          createdAt: _currentUser!.createdAt,
+        );
+      }
+
       notifyListeners();
       return true;
     } catch (e) {
       _setError(e.toString());
+      debugPrint('Error during signup: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -63,10 +107,26 @@ class AuthProvider extends ChangeNotifier {
         email: email,
         password: password,
       );
+
+      // Store/update user in SQLite
+      if (_currentUser != null) {
+        await _dbHelper.insertOrUpdateUser(
+          uid: _currentUser!.uid,
+          email: _currentUser!.email,
+          displayName: _currentUser!.displayName,
+          photoUrl: _currentUser!.photoUrl,
+          monthlyIncome: _currentUser!.monthlyIncome,
+          currency: _currentUser!.currency,
+          budgetLimit: _currentUser!.budgetLimit,
+          createdAt: _currentUser!.createdAt,
+        );
+      }
+
       notifyListeners();
       return true;
     } catch (e) {
       _setError(e.toString());
+      debugPrint('Error during login: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -83,6 +143,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError(e.toString());
+      debugPrint('Error during logout: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -97,6 +158,7 @@ class AuthProvider extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError(e.toString());
+      debugPrint('Error resetting password: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -119,11 +181,19 @@ class AuthProvider extends ChangeNotifier {
           displayName: displayName,
           photoUrl: photoUrl,
         );
+
+        // Update in SQLite
+        await _dbHelper.updateUser(
+          uid: _currentUser!.uid,
+          displayName: displayName,
+          photoUrl: photoUrl,
+        );
       }
       notifyListeners();
       return true;
     } catch (e) {
       _setError(e.toString());
+      debugPrint('Error updating profile: $e');
       return false;
     } finally {
       _setLoading(false);

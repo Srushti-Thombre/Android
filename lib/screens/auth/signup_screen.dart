@@ -197,7 +197,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  void _handleSignUp() {
+  Future<void> _handleSignUp() async {
     if (!_agreeToTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please agree to the terms of service')),
@@ -206,11 +206,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     if (_formKey.currentState?.validate() ?? false) {
-      context.read<AuthProvider>().signUp(
+      final success = await context.read<AuthProvider>().signUp(
             email: _emailController.text.trim(),
             password: _passwordController.text,
             displayName: _nameController.text.trim(),
           );
+
+      if (!mounted) {
+        return;
+      }
+
+      if (success) {
+        Navigator.pop(context);
+      }
     }
   }
 

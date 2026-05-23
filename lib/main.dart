@@ -2,26 +2,40 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'config/firebase_config.dart';
 import 'providers/auth_provider.dart';
 import 'providers/expense_provider.dart';
+import 'providers/income_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/app_theme_provider.dart';
 import 'screens/auth/auth_wrapper.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/profile/profile_screen.dart';
+import 'screens/home/income_screen.dart';
+import 'screens/home/reports_screen.dart';
 import 'utils/theme.dart';
+import 'services/database_helper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    debugPrint('Firebase initialized successfully');
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
+  }
+
+  // Initialize SQLite Database
+  try {
+    final db = DatabaseHelper();
+    await db.database;
+    debugPrint('SQLite database initialized successfully');
+  } catch (e) {
+    debugPrint('Database initialization error: $e');
   }
 
   runApp(const FinanceApp());
@@ -37,6 +51,7 @@ class FinanceApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => IncomeProvider()),
         ChangeNotifierProvider(create: (_) => AppThemeProvider()),
       ],
       child: Consumer<AppThemeProvider>(
@@ -52,6 +67,8 @@ class FinanceApp extends StatelessWidget {
               '/login': (context) => const LoginScreen(),
               '/signup': (context) => const SignUpScreen(),
               '/profile': (context) => const ProfileScreen(),
+              '/income': (context) => const IncomeScreen(),
+              '/reports': (context) => const ReportsScreen(),
             },
           );
         },

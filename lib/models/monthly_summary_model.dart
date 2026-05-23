@@ -1,65 +1,67 @@
 class MonthlySummaryModel {
   final String id;
   final String userId;
-  final String month; // YYYY-MM format
-  final double totalIncome;
+  final String month; // Format: yyyy-MM
   final double totalExpenses;
-  final Map<String, double> categoryBreakdown;
+  final double totalIncome;
   final double savings;
-  final double expenseRatio;
-  final String budgetStatus; // ontrack, warning, exceeded
-  final DateTime generatedAt;
+  final double savingsPercentage;
+  final String? highestCategory;
+  final double? highestCategoryAmount;
+  final DateTime createdAt;
+  final DateTime? updatedAt;
 
   MonthlySummaryModel({
     required this.id,
     required this.userId,
     required this.month,
-    required this.totalIncome,
     required this.totalExpenses,
-    required this.categoryBreakdown,
+    required this.totalIncome,
     required this.savings,
-    required this.expenseRatio,
-    required this.budgetStatus,
-    required this.generatedAt,
+    required this.savingsPercentage,
+    this.highestCategory,
+    this.highestCategoryAmount,
+    required this.createdAt,
+    this.updatedAt,
   });
 
   factory MonthlySummaryModel.fromMap(String id, Map<String, dynamic> map) {
-    final breakdown = Map<String, double>.from(
-      (map['categoryBreakdown'] as Map?)?.map((k, v) => MapEntry(k, (v as num).toDouble())) ?? {},
-    );
-
     return MonthlySummaryModel(
       id: id,
       userId: map['userId'] ?? '',
       month: map['month'] ?? '',
-      totalIncome: (map['totalIncome'] ?? 0).toDouble(),
       totalExpenses: (map['totalExpenses'] ?? 0).toDouble(),
-      categoryBreakdown: breakdown,
+      totalIncome: (map['totalIncome'] ?? 0).toDouble(),
       savings: (map['savings'] ?? 0).toDouble(),
-      expenseRatio: (map['expenseRatio'] ?? 0).toDouble(),
-      budgetStatus: map['budgetStatus'] ?? 'ontrack',
-      generatedAt: DateTime.parse(map['generatedAt']),
+      savingsPercentage: (map['savingsPercentage'] ?? 0).toDouble(),
+      highestCategory: map['highestCategory'],
+      highestCategoryAmount: map['highestCategoryAmount'] != null 
+          ? (map['highestCategoryAmount'] as num).toDouble() 
+          : null,
+      createdAt: DateTime.parse(map['createdAt']),
+      updatedAt: map['updatedAt'] != null ? DateTime.parse(map['updatedAt']) : null,
     );
   }
 
   Map<String, dynamic> toMap() => {
     'userId': userId,
     'month': month,
-    'totalIncome': totalIncome,
     'totalExpenses': totalExpenses,
-    'categoryBreakdown': categoryBreakdown,
+    'totalIncome': totalIncome,
     'savings': savings,
-    'expenseRatio': expenseRatio,
-    'budgetStatus': budgetStatus,
-    'generatedAt': generatedAt.toIso8601String(),
+    'savingsPercentage': savingsPercentage,
+    'highestCategory': highestCategory,
+    'highestCategoryAmount': highestCategoryAmount,
+    'createdAt': createdAt.toIso8601String(),
+    'updatedAt': updatedAt?.toIso8601String(),
   };
 
   String getStatus() {
-    if (expenseRatio > 100) {
+    if (savingsPercentage <= 0) {
       return 'Budget Exceeded!';
-    } else if (expenseRatio > 80) {
+    } else if (savingsPercentage < 20) {
       return 'High Spending';
-    } else if (expenseRatio > 50) {
+    } else if (savingsPercentage < 50) {
       return 'Moderate Spending';
     } else {
       return 'Good Savings';
@@ -67,24 +69,30 @@ class MonthlySummaryModel {
   }
 
   MonthlySummaryModel copyWith({
-    double? totalIncome,
+    String? id,
+    String? userId,
+    String? month,
     double? totalExpenses,
-    Map<String, double>? categoryBreakdown,
+    double? totalIncome,
     double? savings,
-    double? expenseRatio,
-    String? budgetStatus,
+    double? savingsPercentage,
+    String? highestCategory,
+    double? highestCategoryAmount,
+    DateTime? createdAt,
+    DateTime? updatedAt,
   }) {
     return MonthlySummaryModel(
-      id: id,
-      userId: userId,
-      month: month,
-      totalIncome: totalIncome ?? this.totalIncome,
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      month: month ?? this.month,
       totalExpenses: totalExpenses ?? this.totalExpenses,
-      categoryBreakdown: categoryBreakdown ?? this.categoryBreakdown,
+      totalIncome: totalIncome ?? this.totalIncome,
       savings: savings ?? this.savings,
-      expenseRatio: expenseRatio ?? this.expenseRatio,
-      budgetStatus: budgetStatus ?? this.budgetStatus,
-      generatedAt: generatedAt,
+      savingsPercentage: savingsPercentage ?? this.savingsPercentage,
+      highestCategory: highestCategory ?? this.highestCategory,
+      highestCategoryAmount: highestCategoryAmount ?? this.highestCategoryAmount,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
     );
   }
 }

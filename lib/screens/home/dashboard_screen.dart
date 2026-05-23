@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../models/expense_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/expense_provider.dart';
+import '../../providers/income_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../utils/extensions.dart';
 import '../../widgets/common/loading_indicator.dart';
@@ -11,6 +12,7 @@ import '../../widgets/expense/expense_card.dart';
 import '../../widgets/charts/pie_chart_widget.dart';
 import 'add_expense_screen.dart';
 import 'analytics_screen.dart';
+import 'income_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,7 +23,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _selectedTabIndex = 0;
+  String? _initializedUserId;
 
   final Map<String, IconData> categoryIcons = {
     'Rent': Icons.home,
@@ -48,13 +50,28 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final userId = context.read<AuthProvider>().currentUser?.uid;
-      if (userId != null) {
-        // Initialize expense provider with user ID (all expenses in memory)
-        context.read<ExpenseProvider>().initializeUser(userId);
-        context.read<UserProvider>().loadUserProfile();
-      }
+      _initializeExpenses();
     });
+  }
+
+  Future<void> _initializeExpenses([String? userId]) async {
+    final resolvedUserId = userId ?? context.read<AuthProvider>().currentUser?.uid;
+    if (resolvedUserId == null) {
+      return;
+    }
+
+    if (_initializedUserId == resolvedUserId) {
+      return;
+    }
+
+    try {
+      await context.read<ExpenseProvider>().initializeUser(resolvedUserId);
+      await context.read<IncomeProvider>().initializeUser(resolvedUserId);
+      await context.read<UserProvider>().loadUserProfile();
+      _initializedUserId = resolvedUserId;
+    } catch (e) {
+      debugPrint('Error initializing expenses: $e');
+    }
   }
 
   @override
@@ -71,7 +88,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         title: const Text('Dashboard'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.assessment),
+            tooltip: 'Reports',
+            onPressed: () => Navigator.pushNamed(context, '/reports'),
+          ),
+          IconButton(
             icon: const Icon(Icons.account_circle),
+            tooltip: 'Profile',
             onPressed: () => Navigator.pushNamed(context, '/profile'),
           ),
         ],
@@ -81,14 +104,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           final userId = authProvider.currentUser?.uid;
           if (userId == null) return const LoadingIndicator();
 
+          if (_initializedUserId != userId) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _initializeExpenses(userId);
+            });
+          }
+
           return SingleChildScrollView(
             child: Column(
               children: [
                 // Monthly Summary
-                Consumer2<UserProvider, ExpenseProvider>(
-                  builder: (context, userProvider, expenseProvider, _) {
+                Consumer3<UserProvider, ExpenseProvider, IncomeProvider>(
+                  builder: (context, userProvider, expenseProvider, incomeProvider, _) {
                     final user = userProvider.user;
-                    final totalIncome = user?.monthlyIncome ?? 0.0;
+                    final loggedIncome = incomeProvider.totalIncome;
+                    final totalIncome = loggedIncome > 0 ? loggedIncome : (user?.monthlyIncome ?? 0.0);
                     final totalExpenses = expenseProvider.totalExpenses;
                     final savings = totalIncome - totalExpenses;
 
@@ -134,9 +164,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 // Quick Action Buttons
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
+                  child: Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
-                      Expanded(
+                      SizedBox(
+                        width: 168,
                         child: ElevatedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -150,8 +183,23 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           label: const Text('Add Expense'),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
+                      SizedBox(
+                        width: 168,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const IncomeScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.trending_up),
+                          label: const Text('Income Log'),
+                        ),
+                      ),
+                      SizedBox(
+                        width: 168,
                         child: OutlinedButton.icon(
                           onPressed: () {
                             Navigator.push(
@@ -174,9 +222,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   padding: const EdgeInsets.all(16),
                   child: TabBar(
                     controller: _tabController,
-                    onTap: (index) {
-                      setState(() => _selectedTabIndex = index);
-                    },
                     tabs: const [
                       Tab(text: 'Overview', icon: Icon(Icons.pie_chart)),
                       Tab(text: 'History', icon: Icon(Icons.history)),
@@ -296,7 +341,6 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     final user = context.read<UserProvider>().user;
     final totalIncome = user?.monthlyIncome ?? 0.0;
     final totalExpenses = expenseProvider.totalExpenses;
-    final savings = totalIncome - totalExpenses;
     final expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome * 100) : 0.0;
 
     String getStatus() {
@@ -427,20 +471,44 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Expense?'),
-        content: Text('Are you sure you want to delete this ${expense.category} expense?'),
+        content: Text('Are you sure you want to delete this ${expense.category} expense for ₹${expense.amount}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              // Delete expense instantly (no async)
-              context.read<ExpenseProvider>().deleteExpense(expense.id);
+            onPressed: () async {
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Expense deleted')),
-              );
+              try {
+                // Delete expense asynchronously
+                await context.read<ExpenseProvider>().deleteExpense(expense.id);
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Row(
+                        children: [
+                          Icon(Icons.check_circle, color: Colors.white),
+                          SizedBox(width: 12),
+                          Text('Expense deleted'),
+                        ],
+                      ),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Error deleting expense: ${e.toString()}'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
             },
             child: const Text(
               'Delete',
