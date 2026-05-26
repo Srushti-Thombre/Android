@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'providers/table_provider.dart';
+import 'providers/expense_provider.dart';
 import 'providers/income_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/app_theme_provider.dart';
@@ -49,6 +50,7 @@ class FinanceApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => TableProvider()),
+        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
         ChangeNotifierProvider(create: (_) => IncomeProvider()),
         ChangeNotifierProvider(create: (_) => AppThemeProvider()),
       ],

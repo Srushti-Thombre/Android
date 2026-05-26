@@ -30,8 +30,12 @@ class UserModel {
       monthlyIncome: (map['monthlyIncome'] ?? 0).toDouble(),
       currency: map['currency'] ?? '₹',
       budgetLimit: (map['budgetLimit'] ?? 0).toDouble(),
-      createdAt: DateTime.parse(map['createdAt']),
-      lastLoginAt: map['lastLoginAt'] != null ? DateTime.parse(map['lastLoginAt']) : null,
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'] as String)
+          : DateTime.now(),
+      lastLoginAt: map['lastLoginAt'] != null
+          ? DateTime.parse(map['lastLoginAt'] as String)
+          : null,
     );
   }
 

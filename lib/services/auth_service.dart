@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../models/user_model.dart';
-import '../utils/constants.dart';
+import 'database_helper.dart';
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -56,31 +56,50 @@ class AuthService {
     }
   }
 
- Future<UserModel> login({
-  required String email,
-  required String password,
-}) async {
-  try {
-    final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+  Future<UserModel> login({
+    required String email,
+    required String password,
+  }) async {
+    try {
+      final userCredential = await _firebaseAuth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-    final user = userCredential.user;
-    if (user == null) {
-      throw FirebaseAuthException(code: 'user-not-found');
+      final user = userCredential.user;
+      if (user == null) {
+        throw FirebaseAuthException(code: 'user-not-found');
+      }
+
+      // Fetch existing user from database to preserve createdAt
+      try {
+        final dbHelper = DatabaseHelper();
+        final existingUser = await dbHelper.getUserById(user.uid);
+        final createdAt =
+            existingUser != null && existingUser['createdAt'] != null
+            ? DateTime.parse(existingUser['createdAt'])
+            : DateTime.now();
+
+        return UserModel(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName ?? 'User',
+          createdAt: createdAt,
+        );
+      } catch (e) {
+        // Fallback if database query fails
+        return UserModel(
+          uid: user.uid,
+          email: user.email ?? '',
+          displayName: user.displayName ?? 'User',
+          createdAt: DateTime.now(),
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      throw _handleAuthException(e);
     }
-
-    return UserModel(
-      uid: user.uid,
-      email: user.email ?? '',
-      displayName: user.displayName ?? 'User',
-      createdAt: DateTime.now(),
-    );
-  } on FirebaseAuthException catch (e) {
-    throw _handleAuthException(e);
   }
-}
+
   Future<void> logout() async {
     await _firebaseAuth.signOut();
   }
@@ -93,10 +112,7 @@ class AuthService {
     }
   }
 
-  Future<void> updateProfile({
-    String? displayName,
-    String? photoUrl,
-  }) async {
+  Future<void> updateProfile({String? displayName, String? photoUrl}) async {
     try {
       final user = _firebaseAuth.currentUser;
       if (user == null) throw FirebaseAuthException(code: 'user-not-found');

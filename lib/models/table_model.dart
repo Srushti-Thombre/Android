@@ -39,9 +39,11 @@ class TableModel {
               ?.map((o) => OrderModel.fromMap(o as Map<String, dynamic>))
               .toList() ??
           [],
-      createdAt: DateTime.parse(map['createdAt']),
+      createdAt: map['createdAt'] != null
+          ? DateTime.parse(map['createdAt'] as String)
+          : DateTime.now(),
       closedAt: map['closedAt'] != null
-          ? DateTime.parse(map['closedAt'])
+          ? DateTime.parse(map['closedAt'] as String)
           : null,
       updatedAt: map['updatedAt'] != null
           ? DateTime.parse(map['updatedAt'])

@@ -18,6 +18,7 @@ class _DashboardScreenState extends State<DashboardScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _initializedUserId;
+  bool _isInitializing = false;
 
   @override
   void initState() {
@@ -29,6 +30,8 @@ class _DashboardScreenState extends State<DashboardScreen>
   }
 
   Future<void> _initializeTables([String? userId]) async {
+    if (_isInitializing) return; // Prevent concurrent initialization
+
     final resolvedUserId =
         userId ?? context.read<AuthProvider>().currentUser?.uid;
     if (resolvedUserId == null) {
@@ -39,14 +42,19 @@ class _DashboardScreenState extends State<DashboardScreen>
       return;
     }
 
+    _isInitializing = true;
     try {
       final tableProvider = context.read<TableProvider>();
       final userProvider = context.read<UserProvider>();
       await tableProvider.initializeUser(resolvedUserId);
       await userProvider.loadUserProfile();
-      _initializedUserId = resolvedUserId;
+      if (mounted) {
+        _initializedUserId = resolvedUserId;
+      }
     } catch (e) {
       debugPrint('Error initializing tables: $e');
+    } finally {
+      _isInitializing = false;
     }
   }
 
