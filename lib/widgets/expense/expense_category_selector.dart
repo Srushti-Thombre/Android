@@ -38,8 +38,8 @@ class ExpenseCategorySelector extends StatelessWidget {
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   color: isSelected
-                      ? categoryColors[category]?.withOpacity(0.3)
-                      : Colors.grey.withOpacity(0.1),
+                      ? categoryColors[category]?.withValues(alpha: 0.3)
+                      : Colors.grey.withValues(alpha: 0.1),
                   border: Border.all(
                     color: isSelected
                         ? categoryColors[category] ?? Colors.grey

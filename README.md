@@ -1,49 +1,52 @@
-# Finance Analyzer - Production Finance App
+# Hotel Management System - Table Order Management
 
-A professional personal finance management application built with Flutter and Firebase. Track expenses, analyze spending patterns, manage your budget, and gain smart financial insights.
+A professional hotel/restaurant table management application built with Flutter and Firebase. Manage table orders, track costs per table, calculate taxes, and maintain accurate billing for your establishment.
 
 ## 🎯 Features
 
-### Authentication & Security
-- ✅ Email/Password authentication with Firebase
-- ✅ Secure session management with persistent login
-- ✅ User profile management
-- ✅ Password reset functionality
-- ✅ Form validation & error handling
+### Table Management
 
-### Expense Management
-- ✅ Add, edit, delete expenses with real-time sync
-- ✅ 7 expense categories (Rent, Groceries, Transport, Entertainment, Bills, Shopping, Other)
-- ✅ Date picker for precise expense tracking
-- ✅ Notes/descriptions for each expense
-- ✅ Firestore cloud storage for data persistence
+- ✅ Create and manage multiple tables with easy numbering
+- ✅ Open/close tables as customers arrive and leave
+- ✅ Re-open tables for returning customers
+- ✅ Delete tables when no longer needed
 
-### Financial Analytics
-- ✅ Monthly income tracking
-- ✅ Total expense calculation with category breakdown
-- ✅ Savings amount and percentage analysis
-- ✅ Expense ratio insights
-- ✅ Interactive pie charts for visualization
-- ✅ Category-wise spending analysis with trends
-- ✅ Smart financial insights with spending alerts
+### Order Management
+
+- ✅ Add items/orders to each table in real-time
+- ✅ Track quantity and price per item
+- ✅ Automatic cost calculation per order
+- ✅ Add notes/special requests for each order
+- ✅ Remove items from orders
+- ✅ Update quantities on the fly
+
+### Billing & Financial Tracking
+
+- ✅ Automatic subtotal calculation per table
+- ✅ Tax calculation (5% by default, configurable)
+- ✅ Total amount per table (Subtotal + Tax)
+- ✅ Grand total for all open tables
+- ✅ Track open and closed tables separately
+- ✅ Complete order history and details
 
 ### Dashboard & Reporting
-- ✅ Monthly summary cards (Income, Expenses, Savings)
-- ✅ Expense history with date grouping
-- ✅ Quick action buttons for common tasks
-- ✅ Budget status indicator with alerts
-- ✅ Analytics screen with detailed breakdowns
-- ✅ Three-tab navigation: Overview, History, Insights
+
+- ✅ Real-time dashboard with grand total
+- ✅ Table status overview (Open/Closed)
+- ✅ Quick view of costs, taxes, and totals per table
+- ✅ Two-tab navigation: Open Tables, Closed Tables
+- ✅ Complete order details per table
 
 ### User Experience
+
 - ✅ Material 3 modern design system
 - ✅ Dark mode support with persistence
 - ✅ Responsive layouts for all screen sizes
 - ✅ Smooth animations and transitions
 - ✅ Loading indicators for async operations
 - ✅ Comprehensive error handling
-- ✅ Empty states for better UX
 - ✅ Toast notifications with Snackbars
+- ✅ Quick action dialogs and modals
 
 ## 📱 Supported Platforms
 
@@ -57,9 +60,10 @@ A professional personal finance management application built with Flutter and Fi
 ## 🏗️ Project Architecture
 
 **Clean Architecture Pattern** with:
-- **Models**: Type-safe data models with serialization
-- **Services**: Business logic layer (Auth, Firestore, Expenses)
-- **Providers**: State management using Provider pattern
+
+- **Models**: Type-safe Table and Order models with serialization
+- **Services**: Business logic layer (Auth, SQLite Database)
+- **Providers**: State management using Provider pattern for Tables and Orders
 - **Screens**: UI layer with proper separation
 - **Widgets**: Reusable component library
 - **Utils**: Helper functions, validators, formatters
@@ -67,102 +71,126 @@ A professional personal finance management application built with Flutter and Fi
 ## 📲 Quick Start
 
 ### Prerequisites
+
 - Flutter SDK v3.11.4+
 - Dart SDK (included)
-- Firebase Project
+- Firebase Project (for authentication only)
 - Android Studio / Xcode (for mobile)
 
 ### Installation
 
 1. Clone repository:
+
 ```bash
-git clone https://github.com/yourusername/finance_analyzer.git
+git clone https://github.com/yourusername/hotel_management.git
 cd finance_app
 ```
 
 2. Install dependencies:
+
 ```bash
 flutter pub get
 ```
 
-3. Configure Firebase (detailed guide in FIREBASE_SETUP.md):
-```bash
-# Download google-services.json (Android)
-# Download GoogleService-Info.plist (iOS)
-# Update lib/firebase_options.dart
-```
+3. Configure Firebase (for authentication):
+
+- Follow FIREBASE_SETUP.md for setup instructions
 
 4. Run the app:
+
 ```bash
 flutter run -d android  # Android
 flutter run -d ios      # iOS
-flutter run -d chrome   # Web
+flutter run -d windows  # Windows
 ```
 
 ## 🗄️ Database Schema
 
-### Firestore Collections
+### SQLite Tables
 
-- `users/{userId}` - User profiles
-- `users/{userId}/expenses/{expenseId}` - Individual expenses
-- `users/{userId}/monthly_summaries/{year_month}` - Monthly aggregates
-- `users/{userId}/budget_goals/{goalId}` - Budget goals
+- `users/{userId}` - User profiles (Firebase UID)
+- `hotel_tables/{tableId}` - Individual table records
+- `table_orders/{orderId}` - Orders for each table
 
-See **FIREBASE_SETUP.md** for detailed schema documentation.
+Tables include:
+
+- tableNumber: Unique identifier per table
+- isOpen: Status (open/closed)
+- totalAmount: Final amount including tax
+- taxAmount: Calculated tax (5%)
+- subtotal: Total before tax
+- orders: List of items ordered
+- createdAt: When table was created
+- closedAt: When table was closed (if applicable)
+
+Orders include:
+
+- itemName: Name of the item
+- itemPrice: Price per unit
+- quantity: Number of units
+- totalPrice: itemPrice × quantity
+- notes: Special instructions (optional)
+- addedAt: When order was added
 
 ## 🎨 Screens
 
-| Screen | Purpose |
-|--------|---------|
-| Splash | Animated app initialization |
-| Login | Email/password authentication |
-| Sign Up | New account creation with validation |
-| Dashboard | Main hub with overview, history, and insights |
-| Add Expense | Form to add new expenses |
-| Analytics | Detailed breakdown with charts |
-| Profile | User information and settings |
+| Screen        | Purpose                          |
+| ------------- | -------------------------------- |
+| Splash        | Animated app initialization      |
+| Login         | Email/password authentication    |
+| Sign Up       | New account creation             |
+| Dashboard     | Main hub with open/closed tables |
+| Table Details | View all orders for a table      |
+| Add Order     | Form to add new items to a table |
+| Profile       | User information and settings    |
 
 ## 🔒 Security
 
-- Firebase Authentication & Firestore security rules
+- Firebase Authentication for user login
+- SQLite local database for data persistence
 - User-scoped data access only
-- Input validation on client and server
+- Form validation
 - No sensitive data in logs
-- Secure password requirements
 
 ## 📦 Tech Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Flutter 3.11.4, Material 3 |
-| State | Provider 6.2.0 |
-| Backend | Firebase (Auth, Firestore) |
-| Charts | fl_chart 1.2.0 |
-| Storage | SharedPreferences |
+| Layer     | Technology                    |
+| --------- | ----------------------------- |
+| Frontend  | Flutter 3.11.4, Material 3    |
+| State     | Provider 6.2.0                |
+| Auth      | Firebase Authentication       |
+| Database  | SQLite (Local)                |
 | Utilities | intl, uuid, connectivity_plus |
 
 ## 🧪 Testing
 
-Manual testing checklist included in code. Test:
-- Authentication flows
-- Expense CRUD operations
-- Chart visualizations
-- Dashboard calculations
-- Dark mode toggle
-- Form validation
-- Error handling
+Manual testing checklist:
+
+- [ ] App launches successfully
+- [ ] Can sign up and login
+- [ ] Can create new tables
+- [ ] Can add orders to tables
+- [ ] Calculations (subtotal, tax, total) are correct
+- [ ] Can update order quantities
+- [ ] Can close and reopen tables
+- [ ] Can delete tables
+- [ ] Grand total updates correctly
+- [ ] Dark mode works
+- [ ] All navigation works
+- [ ] Error messages display properly
 
 ## 🚀 Performance
 
-- Real-time Firestore listeners
-- Local caching with SharedPreferences
-- Efficient Provider state management
-- Lazy loading of expenses
+- Real-time SQLite operations
+- Efficient state management with Provider
+- Lazy loading of table data
 - Optimized widget rebuilds
+- No unnecessary database queries
 
 ## 📄 Documentation
 
-- **FIREBASE_SETUP.md** - Complete Firebase configuration guide
+- **FIREBASE_SETUP.md** - Complete Firebase authentication setup
+- **SQLITE_IMPLEMENTATION.md** - Database schema and operations
 - **Code comments** - Inline documentation for complex logic
 - **README.md** - This file
 
@@ -175,48 +203,48 @@ Manual testing checklist included in code. Test:
 
 ## 🐛 Troubleshooting
 
-**Firebase not working?**
-→ See FIREBASE_SETUP.md section "Troubleshooting"
+**App won't start?**
+→ Run `flutter clean && flutter pub get && flutter run --no-fast-start`
 
-**Hot reload issues?**
-```bash
-flutter clean
-flutter pub get
-flutter run --no-fast-start
-```
+**Database errors?**
+→ Check SQLite initialization in main.dart and ensure permission is granted
 
 **Build errors?**
+
 ```bash
 flutter doctor -v
 flutter clean
+flutter pub get
 ```
 
 ## 📊 Project Stats
 
 ```
-Total Files: 40+
-Lines of Code: 3000+
-Test Coverage: Manual
-Platforms: 6
-Features: 20+
+Total Files: 30+
+Lines of Code: 2500+
+Tables: Unlimited
+Orders per table: Unlimited
+Platforms: 4
+Features: 15+
 ```
 
 ## ✨ Highlights
 
 🎨 Beautiful Material 3 UI  
-🔐 Secure Firebase backend  
-📊 Real-time analytics  
+🔐 Secure Firebase authentication  
+💰 Real-time billing calculations  
 🌙 Dark mode support  
 ⚡ High performance  
 📱 Cross-platform  
-💾 Cloud persistence  
+💾 Local data persistence  
 🛡️ Type-safe Dart  
 🎯 Clean architecture  
-📚 Well documented  
+📚 Well documented
 
 ## 🚢 Deployment
 
 ### Android
+
 ```bash
 flutter build apk --release
 # or
@@ -224,19 +252,21 @@ flutter build appbundle --release
 ```
 
 ### iOS
+
 ```bash
 flutter build ios --release
 ```
 
-### Web
+### Windows
+
 ```bash
-flutter build web
-firebase deploy  # If hosting on Firebase
+flutter build windows --release
 ```
 
 ## 🤝 Contributing
 
 Contributions welcome! Ensure:
+
 - Code follows Dart style guide
 - All tests pass
 - Documentation updated
@@ -251,10 +281,26 @@ Contributions welcome! Ensure:
 
 ## 📄 License
 
-Provided as-is for educational and personal use.
+Provided as-is for educational and commercial use.
 
 ---
 
-**Happy Tracking! 💸**
+**Happy Managing! 🍽️**
 
 For complete Firebase setup instructions, see **FIREBASE_SETUP.md**
+
+## Change Log
+
+### Version 1.1.0 (Hotel Management)
+
+- Converted from finance tracking to table order management
+- Added table management system
+- Implemented real-time order tracking per table
+- Added automatic tax and cost calculations
+- Replaced expense tracking with hotel management features
+- Kept Firebase authentication and SQLite persistence
+- Maintained clean architecture and Material 3 design
+
+### Version 1.0.0 (Finance Tracker)
+
+- Initial project setup for personal finance management

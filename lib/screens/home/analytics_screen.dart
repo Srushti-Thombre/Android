@@ -110,7 +110,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                                 child: LinearProgressIndicator(
                                   value: percentage / 100,
                                   minHeight: 6,
-                                  backgroundColor: Colors.grey.withOpacity(0.2),
+                                  backgroundColor: Colors.grey.withValues(alpha: 0.2),
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     categoryColors[entry.key] ?? Colors.grey,
                                   ),

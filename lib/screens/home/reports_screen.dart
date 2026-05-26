@@ -270,7 +270,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                         value: percentage / 100,
                                         minHeight: 6,
                                         backgroundColor: Colors.grey
-                                            .withOpacity(0.2),
+                                            .withValues(alpha: 0.2),
                                         valueColor:
                                             AlwaysStoppedAnimation<
                                                 Color>(
@@ -342,7 +342,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                                 shape: BoxShape.circle,
                                 color: (categoryColors[expense.category] ??
                                         Colors.grey)
-                                    .withOpacity(0.2),
+                                    .withValues(alpha: 0.2),
                               ),
                               child: Icon(
                                 _getCategoryIcon(expense.category),

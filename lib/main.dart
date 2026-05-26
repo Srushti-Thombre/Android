@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
-import 'providers/expense_provider.dart';
+import 'providers/table_provider.dart';
 import 'providers/income_provider.dart';
 import 'providers/user_provider.dart';
 import 'providers/app_theme_provider.dart';
@@ -11,8 +11,6 @@ import 'screens/auth/auth_wrapper.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/signup_screen.dart';
 import 'screens/profile/profile_screen.dart';
-import 'screens/home/income_screen.dart';
-import 'screens/home/reports_screen.dart';
 import 'utils/theme.dart';
 import 'services/database_helper.dart';
 
@@ -50,7 +48,7 @@ class FinanceApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => UserProvider()),
-        ChangeNotifierProvider(create: (_) => ExpenseProvider()),
+        ChangeNotifierProvider(create: (_) => TableProvider()),
         ChangeNotifierProvider(create: (_) => IncomeProvider()),
         ChangeNotifierProvider(create: (_) => AppThemeProvider()),
       ],
@@ -58,17 +56,17 @@ class FinanceApp extends StatelessWidget {
         builder: (context, themeProvider, _) {
           return MaterialApp(
             debugShowCheckedModeBanner: false,
-            title: 'Finance Analyzer',
+            title: 'Hotel Management System',
             theme: AppTheme.lightTheme(),
             darkTheme: AppTheme.darkTheme(),
-            themeMode: themeProvider.isDarkMode ? ThemeMode.dark : ThemeMode.light,
+            themeMode: themeProvider.isDarkMode
+                ? ThemeMode.dark
+                : ThemeMode.light,
             home: const AuthWrapper(),
             routes: {
               '/login': (context) => const LoginScreen(),
               '/signup': (context) => const SignUpScreen(),
               '/profile': (context) => const ProfileScreen(),
-              '/income': (context) => const IncomeScreen(),
-              '/reports': (context) => const ReportsScreen(),
             },
           );
         },

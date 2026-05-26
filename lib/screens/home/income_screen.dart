@@ -79,7 +79,11 @@ class _IncomeScreenState extends State<IncomeScreen> {
                         IconButton(
                           icon: const Icon(Icons.chevron_left),
                           onPressed: () => incomeProvider.setSelectedMonth(
-                            DateTime(incomeProvider.selectedMonth.year, incomeProvider.selectedMonth.month - 1, 1),
+                            DateTime(
+                              incomeProvider.selectedMonth.year,
+                              incomeProvider.selectedMonth.month - 1,
+                              1,
+                            ),
                           ),
                         ),
                         Expanded(
@@ -87,9 +91,8 @@ class _IncomeScreenState extends State<IncomeScreen> {
                             children: [
                               Text(
                                 _monthLabel(incomeProvider.selectedMonth),
-                                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -102,7 +105,11 @@ class _IncomeScreenState extends State<IncomeScreen> {
                         IconButton(
                           icon: const Icon(Icons.chevron_right),
                           onPressed: () => incomeProvider.setSelectedMonth(
-                            DateTime(incomeProvider.selectedMonth.year, incomeProvider.selectedMonth.month + 1, 1),
+                            DateTime(
+                              incomeProvider.selectedMonth.year,
+                              incomeProvider.selectedMonth.month + 1,
+                              1,
+                            ),
                           ),
                         ),
                       ],
@@ -129,14 +136,15 @@ class _IncomeScreenState extends State<IncomeScreen> {
                           Icon(
                             Icons.payments_outlined,
                             size: 64,
-                            color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outline.withValues(alpha: 0.3),
                           ),
                           const SizedBox(height: 12),
                           Text(
                             'No income entries for this month',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: Colors.grey),
                           ),
                         ],
                       ),
@@ -149,13 +157,16 @@ class _IncomeScreenState extends State<IncomeScreen> {
                     itemCount: incomeProvider.transactions.length,
                     itemBuilder: (context, index) {
                       final transaction = incomeProvider.transactions[index];
-                      final icon = sourceIcons[transaction.source] ?? Icons.payments;
+                      final icon =
+                          sourceIcons[transaction.source] ?? Icons.payments;
 
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 8),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Colors.green.withOpacity(0.15),
+                            backgroundColor: Colors.green.withValues(
+                              alpha: 0.15,
+                            ),
                             child: Icon(icon, color: Colors.green),
                           ),
                           title: Text(transaction.source),
@@ -163,7 +174,8 @@ class _IncomeScreenState extends State<IncomeScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(Formatters.formatDate(transaction.date)),
-                              if (transaction.note.isNotEmpty) Text(transaction.note),
+                              if (transaction.note.isNotEmpty)
+                                Text(transaction.note),
                             ],
                           ),
                           trailing: Row(
@@ -171,13 +183,17 @@ class _IncomeScreenState extends State<IncomeScreen> {
                             children: [
                               Text(
                                 transaction.amount.toCurrency(),
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                style: Theme.of(context).textTheme.bodyLarge
+                                    ?.copyWith(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.green,
                                     ),
                               ),
                               IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
+                                icon: const Icon(
+                                  Icons.delete,
+                                  color: Colors.red,
+                                ),
                                 onPressed: () => _confirmDelete(transaction.id),
                               ),
                             ],
@@ -216,7 +232,9 @@ class _IncomeScreenState extends State<IncomeScreen> {
                   TextFormField(
                     controller: amountController,
                     validator: Validators.validateAmount,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     decoration: const InputDecoration(
                       labelText: 'Amount (₹)',
                       prefixIcon: Icon(Icons.attach_money),
@@ -224,7 +242,7 @@ class _IncomeScreenState extends State<IncomeScreen> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: selectedSource,
+                    initialValue: selectedSource,
                     items: sources
                         .map(
                           (source) => DropdownMenuItem(
@@ -314,12 +332,12 @@ class _IncomeScreenState extends State<IncomeScreen> {
 
     try {
       await context.read<IncomeProvider>().addIncomeTransaction(
-            userId: userId,
-            source: result.source,
-            amount: result.amount,
-            date: result.date,
-            note: result.note,
-          );
+        userId: userId,
+        source: result.source,
+        amount: result.amount,
+        date: result.date,
+        note: result.note,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -346,7 +364,9 @@ class _IncomeScreenState extends State<IncomeScreen> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete Income?'),
-        content: const Text('Are you sure you want to delete this income entry?'),
+        content: const Text(
+          'Are you sure you want to delete this income entry?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -365,7 +385,9 @@ class _IncomeScreenState extends State<IncomeScreen> {
     }
 
     try {
-      await context.read<IncomeProvider>().deleteIncomeTransaction(transactionId);
+      await context.read<IncomeProvider>().deleteIncomeTransaction(
+        transactionId,
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

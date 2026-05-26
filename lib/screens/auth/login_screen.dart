@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   end: Alignment.bottomRight,
                   colors: [
                     Theme.of(context).colorScheme.primary,
-                    Theme.of(context).colorScheme.primary.withOpacity(0.7),
+                    Theme.of(context).colorScheme.primary.withValues(alpha: 0.7),
                   ],
                 ),
               ),
@@ -43,7 +43,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                       ),
                       child: Icon(
                         Icons.trending_up,
@@ -141,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: Container(
                                   padding: const EdgeInsets.all(12),
                                   decoration: BoxDecoration(
-                                    color: Colors.red.withOpacity(0.1),
+                                    color: Colors.red.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(color: Colors.red),
                                   ),
@@ -169,7 +169,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        Expanded(child: Divider(color: Colors.grey.withOpacity(0.3))),
+                        Expanded(child: Divider(color: Colors.grey.withValues(alpha: 0.3))),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
@@ -177,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             style: Theme.of(context).textTheme.bodySmall,
                           ),
                         ),
-                        Expanded(child: Divider(color: Colors.grey.withOpacity(0.3))),
+                        Expanded(child: Divider(color: Colors.grey.withValues(alpha: 0.3))),
                       ],
                     ),
                     const SizedBox(height: 16),

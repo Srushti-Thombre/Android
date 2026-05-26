@@ -1,18 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/expense_model.dart';
+import '../../models/table_model.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/expense_provider.dart';
-import '../../providers/income_provider.dart';
+import '../../providers/table_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../utils/extensions.dart';
 import '../../widgets/common/loading_indicator.dart';
-import '../../widgets/dashboard/summary_card.dart';
-import '../../widgets/expense/expense_card.dart';
-import '../../widgets/charts/pie_chart_widget.dart';
-import 'add_expense_screen.dart';
-import 'analytics_screen.dart';
-import 'income_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -21,41 +14,23 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
+class _DashboardScreenState extends State<DashboardScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   String? _initializedUserId;
-
-  final Map<String, IconData> categoryIcons = {
-    'Rent': Icons.home,
-    'Groceries': Icons.shopping_cart,
-    'Transport': Icons.directions_car,
-    'Entertainment': Icons.movie,
-    'Bills': Icons.receipt_long,
-    'Shopping': Icons.shopping_bag,
-    'Other': Icons.more_horiz,
-  };
-
-  final Map<String, Color> categoryColors = {
-    'Rent': Colors.blue,
-    'Groceries': Colors.orange,
-    'Transport': Colors.green,
-    'Entertainment': Colors.purple,
-    'Bills': Colors.red,
-    'Shopping': Colors.pink,
-    'Other': Colors.teal,
-  };
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeExpenses();
+      _initializeTables();
     });
   }
 
-  Future<void> _initializeExpenses([String? userId]) async {
-    final resolvedUserId = userId ?? context.read<AuthProvider>().currentUser?.uid;
+  Future<void> _initializeTables([String? userId]) async {
+    final resolvedUserId =
+        userId ?? context.read<AuthProvider>().currentUser?.uid;
     if (resolvedUserId == null) {
       return;
     }
@@ -65,12 +40,13 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
 
     try {
-      await context.read<ExpenseProvider>().initializeUser(resolvedUserId);
-      await context.read<IncomeProvider>().initializeUser(resolvedUserId);
-      await context.read<UserProvider>().loadUserProfile();
+      final tableProvider = context.read<TableProvider>();
+      final userProvider = context.read<UserProvider>();
+      await tableProvider.initializeUser(resolvedUserId);
+      await userProvider.loadUserProfile();
       _initializedUserId = resolvedUserId;
     } catch (e) {
-      debugPrint('Error initializing expenses: $e');
+      debugPrint('Error initializing tables: $e');
     }
   }
 
@@ -85,13 +61,8 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     return Scaffold(
       appBar: AppBar(
         elevation: 0,
-        title: const Text('Dashboard'),
+        title: const Text('Hotel Management'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.assessment),
-            tooltip: 'Reports',
-            onPressed: () => Navigator.pushNamed(context, '/reports'),
-          ),
           IconButton(
             icon: const Icon(Icons.account_circle),
             tooltip: 'Profile',
@@ -99,216 +70,99 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ),
         ],
       ),
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, _) {
-          final userId = authProvider.currentUser?.uid;
-          if (userId == null) return const LoadingIndicator();
-
-          if (_initializedUserId != userId) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _initializeExpenses(userId);
-            });
+      body: Consumer<TableProvider>(
+        builder: (context, tableProvider, _) {
+          if (tableProvider.isLoading) {
+            return const LoadingIndicator();
           }
 
-          return SingleChildScrollView(
-            child: Column(
-              children: [
-                // Monthly Summary
-                Consumer3<UserProvider, ExpenseProvider, IncomeProvider>(
-                  builder: (context, userProvider, expenseProvider, incomeProvider, _) {
-                    final user = userProvider.user;
-                    final loggedIncome = incomeProvider.totalIncome;
-                    final totalIncome = loggedIncome > 0 ? loggedIncome : (user?.monthlyIncome ?? 0.0);
-                    final totalExpenses = expenseProvider.totalExpenses;
-                    final savings = totalIncome - totalExpenses;
+          return Column(
+            children: [
+              // Grand total section
+              _buildGrandTotalSection(tableProvider),
 
-                    return Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: SummaryCard(
-                                  title: 'Income',
-                                  value: totalIncome.toCurrency(),
-                                  color: Colors.green,
-                                  icon: Icons.trending_up,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: SummaryCard(
-                                  title: 'Expenses',
-                                  value: totalExpenses.toCurrency(),
-                                  color: Colors.red,
-                                  icon: Icons.trending_down,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          SummaryCard(
-                            title: 'Savings',
-                            value: savings.toCurrency(),
-                            color: Colors.blue,
-                            icon: Icons.savings,
-                            subtitle: '${((savings / totalIncome * 100).toStringAsFixed(1))}% of income',
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-
-                // Quick Action Buttons
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: [
-                      SizedBox(
-                        width: 168,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AddExpenseScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Expense'),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 168,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const IncomeScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.trending_up),
-                          label: const Text('Income Log'),
-                        ),
-                      ),
-                      SizedBox(
-                        width: 168,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const AnalyticsScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.bar_chart),
-                          label: const Text('Analytics'),
-                        ),
-                      ),
-                    ],
+              // Tab bar for Open/Closed tables
+              TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(text: 'Open Tables (${tableProvider.openTables.length})'),
+                  Tab(
+                    text:
+                        'Closed Tables (${tableProvider.closedTables.length})',
                   ),
-                ),
+                ],
+              ),
 
-                // Tab Navigation
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: TabBar(
-                    controller: _tabController,
-                    tabs: const [
-                      Tab(text: 'Overview', icon: Icon(Icons.pie_chart)),
-                      Tab(text: 'History', icon: Icon(Icons.history)),
-                      Tab(text: 'Insights', icon: Icon(Icons.lightbulb)),
-                    ],
-                  ),
+              // Tables list
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTablesList(tableProvider, tableProvider.openTables),
+                    _buildTablesList(tableProvider, tableProvider.closedTables),
+                  ],
                 ),
-
-                // Tab Content
-                Consumer<ExpenseProvider>(
-                  builder: (context, expenseProvider, _) {
-                    return SizedBox(
-                      height: 400,
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          // Overview Tab
-                          _buildOverviewTab(expenseProvider),
-                          // History Tab
-                          _buildHistoryTab(expenseProvider, userId),
-                          // Insights Tab
-                          _buildInsightsTab(expenseProvider),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-              ],
-            ),
+              ),
+            ],
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _showAddTableDialog,
+        tooltip: 'Add Table',
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildOverviewTab(ExpenseProvider expenseProvider) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+  Widget _buildGrandTotalSection(TableProvider tableProvider) {
+    return Container(
+      color: Theme.of(context).colorScheme.primaryContainer,
+      padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (expenseProvider.categoryBreakdown.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.inbox,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No expenses yet',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey,
-                        ),
-                  ),
-                ],
-              ),
-            )
-          else
-            PieChartWidget(
-              data: expenseProvider.categoryBreakdown,
-              categoryColors: categoryColors,
+          Text(
+            'Grand Total (Open Tables)',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            tableProvider.grandTotal.toCurrency(),
+            style: Theme.of(context).textTheme.displaySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHistoryTab(ExpenseProvider expenseProvider, String userId) {
-    if (expenseProvider.expenses.isEmpty) {
+  Widget _buildTablesList(
+    TableProvider tableProvider,
+    List<TableModel> tables,
+  ) {
+    if (tables.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              Icons.receipt,
+              Icons.inbox,
               size: 64,
-              color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.outline.withValues(alpha: 0.3),
             ),
             const SizedBox(height: 16),
             Text(
-              'No expense history',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey,
-                  ),
+              'No tables available',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
             ),
           ],
         ),
@@ -316,162 +170,251 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: expenseProvider.expenses.length,
+      padding: const EdgeInsets.all(8),
+      itemCount: tables.length,
       itemBuilder: (context, index) {
-        final expense = expenseProvider.expenses[index];
-        return ExpenseCard(
-          category: expense.category,
-          amount: expense.amount,
-          date: expense.date,
-          note: expense.note,
-          categoryIcon: Icon(
-            categoryIcons[expense.category] ?? Icons.category,
-            color: categoryColors[expense.category] ?? Colors.grey,
-          ),
-          onDeletePressed: () {
-            _showDeleteDialog(context, userId, expense);
-          },
-        );
+        final table = tables[index];
+        return _buildTableCard(table, tableProvider);
       },
     );
   }
 
-  Widget _buildInsightsTab(ExpenseProvider expenseProvider) {
-    final user = context.read<UserProvider>().user;
-    final totalIncome = user?.monthlyIncome ?? 0.0;
-    final totalExpenses = expenseProvider.totalExpenses;
-    final expenseRatio = totalIncome > 0 ? (totalExpenses / totalIncome * 100) : 0.0;
+  Widget _buildTableCard(TableModel table, TableProvider tableProvider) {
+    final statusColor = table.isOpen ? Colors.green : Colors.grey;
+    final statusText = table.isOpen ? 'Open' : 'Closed';
 
-    String getStatus() {
-      if (expenseRatio > 100) return 'Budget Exceeded!';
-      if (expenseRatio > 80) return 'High Spending';
-      if (expenseRatio > 50) return 'Moderate Spending';
-      return 'Good Savings';
-    }
-
-    String getMessage() {
-      if (expenseRatio > 100) return 'You are overspending this month!';
-      if (expenseRatio > 80) return 'Be careful, you are spending too much.';
-      if (expenseRatio > 50) return 'Your spending is moderate. Keep tracking!';
-      return 'Great job! You are saving well.';
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Column(
-        children: [
-          Card(
-            color: _getStatusColor(expenseRatio).withOpacity(0.1),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(
-                        _getStatusIcon(expenseRatio),
-                        color: _getStatusColor(expenseRatio),
-                        size: 32,
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              getStatus(),
-                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Spending: ${expenseRatio.toStringAsFixed(1)}%',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(getMessage()),
-                ],
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      child: ListTile(
+        leading: Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: statusColor.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Center(
+            child: Text(
+              'T${table.tableNumber}',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: statusColor,
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          if (expenseProvider.categoryBreakdown.isNotEmpty) ...[
+        ),
+        title: Text('Table ${table.tableNumber}'),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              'Top Spending Category',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              'Orders: ${table.orders.length} | Status: $statusText',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 12),
-            _buildTopCategoryWidget(expenseProvider),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  'Subtotal: ${table.subtotal.toCurrency()}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Tax: ${table.taxAmount.toCurrency()}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.orange),
+                ),
+              ],
+            ),
           ],
+        ),
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              table.totalAmount.toCurrency(),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: table.isOpen ? Colors.green : Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 24,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                ),
+                onPressed: () => _showTableOptionsMenu(table, tableProvider),
+                child: const Icon(Icons.more_vert, size: 16),
+              ),
+            ),
+          ],
+        ),
+        onTap: () => _showTableDetailsDialog(table),
+      ),
+    );
+  }
+
+  void _showTableDetailsDialog(TableModel table) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Table ${table.tableNumber} Details'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Status: ${table.isOpen ? "Open" : "Closed"}'),
+              const SizedBox(height: 12),
+              Text(
+                'Orders (${table.orders.length})',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const Divider(),
+              if (table.orders.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: Text(
+                      'No orders yet',
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    ),
+                  ),
+                )
+              else
+                ...table.orders.map((order) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                order.itemName,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Qty: ${order.quantity} × ${order.itemPrice.toCurrency()}',
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          order.totalPrice.toCurrency(),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              const Divider(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Subtotal:',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Text(
+                          table.subtotal.toCurrency(),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Tax (5%):',
+                          style: Theme.of(context).textTheme.bodyMedium,
+                        ),
+                        Text(
+                          table.taxAmount.toCurrency(),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total:',
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          table.totalAmount.toCurrency(),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          if (table.isOpen)
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                _showAddOrderDialog(table);
+              },
+              child: const Text('Add Order'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildTopCategoryWidget(ExpenseProvider expenseProvider) {
-    final topCategory = expenseProvider.categoryBreakdown.entries
-        .reduce((a, b) => a.value > b.value ? a : b);
+  void _showAddTableDialog() {
+    final tableNumberController = TextEditingController();
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: categoryColors[topCategory.key]?.withOpacity(0.2),
-              ),
-              child: Icon(
-                categoryIcons[topCategory.key],
-                color: categoryColors[topCategory.key],
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    topCategory.key,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    topCategory.value.toCurrency(),
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: categoryColors[topCategory.key],
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context, String userId, ExpenseModel expense) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Expense?'),
-        content: Text('Are you sure you want to delete this ${expense.category} expense for ₹${expense.amount}?'),
+        title: const Text('Create New Table'),
+        content: TextField(
+          controller: tableNumberController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: 'Enter table number',
+            labelText: 'Table Number',
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -479,58 +422,250 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ),
           TextButton(
             onPressed: () async {
-              Navigator.pop(context);
+              final tableNumber = int.tryParse(tableNumberController.text);
+              if (tableNumber == null || tableNumber <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please enter a valid table number'),
+                  ),
+                );
+                return;
+              }
+
+              final userId = context.read<AuthProvider>().currentUser?.uid;
+              if (userId == null) return;
+
+              // Capture context and navigator before async operation
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
               try {
-                // Delete expense asynchronously
-                await context.read<ExpenseProvider>().deleteExpense(expense.id);
-                
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(Icons.check_circle, color: Colors.white),
-                          SizedBox(width: 12),
-                          Text('Expense deleted'),
-                        ],
-                      ),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 2),
-                    ),
-                  );
-                }
+                await context.read<TableProvider>().createTable(
+                  userId,
+                  tableNumber,
+                );
+                if (!mounted) return;
+
+                navigator.pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Table created successfully')),
+                );
               } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error deleting expense: ${e.toString()}'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
+                if (!mounted) return;
+
+                messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
               }
             },
-            child: const Text(
-              'Delete',
-              style: TextStyle(color: Colors.red),
-            ),
+            child: const Text('Create'),
           ),
         ],
       ),
     );
   }
 
-  Color _getStatusColor(double expenseRatio) {
-    if (expenseRatio > 100) return Colors.red;
-    if (expenseRatio > 80) return Colors.orange;
-    if (expenseRatio > 50) return Colors.yellow;
-    return Colors.green;
+  void _showAddOrderDialog(TableModel table) {
+    final itemNameController = TextEditingController();
+    final itemPriceController = TextEditingController();
+    final quantityController = TextEditingController(text: '1');
+    final notesController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add Order'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: itemNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Item Name',
+                  hintText: 'e.g., Coffee',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: itemPriceController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Price',
+                  hintText: '0.00',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: quantityController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Quantity',
+                  hintText: '1',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: notesController,
+                decoration: const InputDecoration(
+                  labelText: 'Notes (Optional)',
+                  hintText: 'e.g., Extra sugar',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final itemName = itemNameController.text.trim();
+              final itemPrice = double.tryParse(itemPriceController.text);
+              final quantity = int.tryParse(quantityController.text);
+              final notes = notesController.text.trim();
+
+              if (itemName.isEmpty ||
+                  itemPrice == null ||
+                  quantity == null ||
+                  quantity <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Please fill in all required fields'),
+                  ),
+                );
+                return;
+              }
+
+              final navigator = Navigator.of(context);
+              final messenger = ScaffoldMessenger.of(context);
+
+              try {
+                await context.read<TableProvider>().addOrder(
+                  tableId: table.id,
+                  itemName: itemName,
+                  itemPrice: itemPrice,
+                  quantity: quantity,
+                  notes: notes.isEmpty ? null : notes,
+                );
+
+                if (!mounted) return;
+
+                navigator.pop();
+                messenger.showSnackBar(
+                  const SnackBar(content: Text('Order added successfully')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+
+                messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+              }
+            },
+            child: const Text('Add Order'),
+          ),
+        ],
+      ),
+    );
   }
 
-  IconData _getStatusIcon(double expenseRatio) {
-    if (expenseRatio > 100) return Icons.trending_up;
-    if (expenseRatio > 80) return Icons.warning;
-    if (expenseRatio > 50) return Icons.info;
-    return Icons.thumb_up;
+  void _showTableOptionsMenu(TableModel table, TableProvider tableProvider) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) => Wrap(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.edit),
+            title: const Text('View Details'),
+            onTap: () {
+              Navigator.pop(context);
+              _showTableDetailsDialog(table);
+            },
+          ),
+          if (table.isOpen)
+            ListTile(
+              leading: const Icon(Icons.lock),
+              title: const Text('Close Table'),
+              onTap: () async {
+                Navigator.pop(context);
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  await tableProvider.closeTable(table.id);
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Table closed successfully')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+            )
+          else
+            ListTile(
+              leading: const Icon(Icons.lock_open),
+              title: const Text('Reopen Table'),
+              onTap: () async {
+                Navigator.pop(context);
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  await tableProvider.reopenTable(table.id);
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('Table reopened successfully'),
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              },
+            ),
+          ListTile(
+            leading: const Icon(Icons.delete, color: Colors.red),
+            title: const Text(
+              'Delete Table',
+              style: TextStyle(color: Colors.red),
+            ),
+            onTap: () async {
+              Navigator.pop(context);
+              final messenger = ScaffoldMessenger.of(context);
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Delete Table?'),
+                  content: Text(
+                    'Are you sure you want to delete Table ${table.tableNumber}?',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Delete'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                try {
+                  await tableProvider.deleteTable(table.id);
+                  if (!mounted) return;
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Table deleted successfully')),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(SnackBar(content: Text('Error: $e')));
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
   }
 }

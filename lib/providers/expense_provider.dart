@@ -7,7 +7,7 @@ class ExpenseProvider extends ChangeNotifier {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
   List<ExpenseModel> _currentUserExpenses = [];
-  Map<String, double> _categoryBreakdown = {};
+  final Map<String, double> _categoryBreakdown = {};
   double _totalExpenses = 0.0;
   String? _error;
   DateTime _selectedMonth = DateTime.now();

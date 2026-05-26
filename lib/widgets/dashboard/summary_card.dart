@@ -27,8 +27,8 @@ class SummaryCard extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              color.withOpacity(0.1),
-              color.withOpacity(0.05),
+              color.withValues(alpha: 0.1),
+              color.withValues(alpha: 0.05),
             ],
           ),
         ),
@@ -64,7 +64,7 @@ class SummaryCard extends StatelessWidget {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: color.withOpacity(0.2),
+                    color: color.withValues(alpha: 0.2),
                   ),
                   child: Icon(icon, color: color, size: 28),
                 ),

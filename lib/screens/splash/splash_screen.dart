@@ -7,7 +7,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -24,8 +25,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
 
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
-        .animate(
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
           CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
         );
 
@@ -47,8 +48,8 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Theme.of(context).colorScheme.primary.withOpacity(0.1),
-              Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+              Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
+              Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
             ],
           ),
         ),
@@ -64,28 +65,30 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.2),
                     ),
                     child: Icon(
-                      Icons.trending_up,
+                      Icons.restaurant,
                       size: 64,
                       color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                   const SizedBox(height: 24),
                   Text(
-                    '💸 Finance Analyzer',
+                    '🍽️ Hotel Management',
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Track your finances smartly',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey,
-                        ),
+                    'Manage tables and orders efficiently',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: Colors.grey),
                   ),
                 ],
               ),
